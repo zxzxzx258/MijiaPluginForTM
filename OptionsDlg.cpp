@@ -430,8 +430,10 @@ bool COptionsDlg::Show(HWND parent) {
     if (parent) {
         RECT parentRect{};
         GetWindowRect(parent, &parentRect);
-        x = (std::max)(0, parentRect.left + (parentRect.right - parentRect.left - width) / 2);
-        y = (std::max)(0, parentRect.top + (parentRect.bottom - parentRect.top - height) / 2);
+        x = static_cast<int>((std::max)(0L,
+            parentRect.left + (parentRect.right - parentRect.left - width) / 2));
+        y = static_cast<int>((std::max)(0L,
+            parentRect.top + (parentRect.bottom - parentRect.top - height) / 2));
     }
 
     HWND window = CreateWindowExW(WS_EX_DLGMODALFRAME | WS_EX_TOPMOST,
