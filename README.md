@@ -13,6 +13,8 @@
 
 奇数个设备的最后一项固定在新列上行。关闭插件的“显示设备名称标签”后，每项只显示数值，例如 `86.2W`。
 
+![TrafficMonitor 任务栏中的双设备功率显示](docs/images/multi-device-taskbar.png)
+
 每台设备拥有独立的 TrafficMonitor item ID，因此可以单独显示、隐藏、排序和设置颜色。设备改名不会改变 item ID，也不会丢失 TrafficMonitor 中已有的项目设置。
 
 ## 配置
