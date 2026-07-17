@@ -9,12 +9,13 @@ void Require(bool condition, const wchar_t* message) {
     }
 }
 
-void WriteAnsiFile(const std::wstring& path, const std::wstring& content) {
-    int length = WideCharToMultiByte(CP_ACP, 0, content.c_str(), static_cast<int>(content.size()),
+void WriteLegacyGbkFile(const std::wstring& path, const std::wstring& content) {
+    constexpr UINT legacyCodePage = 936;
+    int length = WideCharToMultiByte(legacyCodePage, 0, content.c_str(), static_cast<int>(content.size()),
                                      nullptr, 0, nullptr, nullptr);
     Require(length > 0, L"encode fixture");
     std::string bytes(static_cast<size_t>(length), '\0');
-    WideCharToMultiByte(CP_ACP, 0, content.c_str(), static_cast<int>(content.size()),
+    WideCharToMultiByte(legacyCodePage, 0, content.c_str(), static_cast<int>(content.size()),
                         bytes.data(), length, nullptr, nullptr);
 
     HANDLE file = CreateFileW(path.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS,
@@ -50,7 +51,7 @@ int wmain() {
         L"IP=192.0.2.11\r\n"
         L"Token=ffeeddccbbaa99887766554433221100\r\n"
         L"Name=空调插座\r\n";
-    WriteAnsiFile(iniPath, legacy);
+    WriteLegacyGbkFile(iniPath, legacy);
 
     auto& manager = ConfigManager::Instance();
     manager.SetConfigDir(directory);
@@ -65,6 +66,17 @@ int wmain() {
             L"create migration backup");
     Require(GetPrivateProfileIntW(L"Plugin", L"ConfigVersion", 0, iniPath.c_str()) == 2,
             L"write version 2 configuration");
+    {
+        HANDLE file = CreateFileW(iniPath.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
+                                  OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+        Require(file != INVALID_HANDLE_VALUE, L"open migrated configuration");
+        wchar_t bom = 0;
+        DWORD bytesRead = 0;
+        const bool read = ReadFile(file, &bom, sizeof(bom), &bytesRead, nullptr) != FALSE;
+        CloseHandle(file);
+        Require(read && bytesRead == sizeof(bom) && bom == 0xFEFF,
+                L"write migrated configuration as Unicode INI");
+    }
 
     const std::wstring secondId = firstLoad.devices[1].itemId;
     Require(manager.Load(), L"reload version 2 configuration");

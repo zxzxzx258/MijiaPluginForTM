@@ -101,10 +101,16 @@ std::wstring ConfigManager::DecodeTextFile(const std::wstring& path) {
     UINT codePage = CP_UTF8;
     DWORD flags = MB_ERR_INVALID_CHARS;
     if (wideLength == 0) {
-        codePage = CP_ACP;
-        flags = 0;
+        codePage = 936; // Legacy releases were primarily used on Simplified Chinese Windows.
+        flags = MB_ERR_INVALID_CHARS;
         wideLength = MultiByteToWideChar(codePage, flags, bytes.data(),
             static_cast<int>(bytes.size()), nullptr, 0);
+        if (wideLength == 0) {
+            codePage = CP_ACP;
+            flags = 0;
+            wideLength = MultiByteToWideChar(codePage, flags, bytes.data(),
+                static_cast<int>(bytes.size()), nullptr, 0);
+        }
         offset = 0;
         sourceLength = static_cast<int>(bytes.size());
     }
@@ -221,6 +227,18 @@ bool ConfigManager::Save() const {
     const std::wstring path = GetIniPath();
     const std::wstring tempPath = path + L".tmp";
     DeleteFileW(tempPath.c_str());
+
+    HANDLE tempFile = CreateFileW(tempPath.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS,
+                                  FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (tempFile == INVALID_HANDLE_VALUE) return false;
+    const wchar_t bom = 0xFEFF;
+    DWORD bytesWritten = 0;
+    const bool bomWritten = WriteFile(tempFile, &bom, sizeof(bom), &bytesWritten, nullptr) != FALSE;
+    CloseHandle(tempFile);
+    if (!bomWritten || bytesWritten != sizeof(bom)) {
+        DeleteFileW(tempPath.c_str());
+        return false;
+    }
 
     bool ok = true;
     ok &= WriteIniInt(L"Plugin", L"ConfigVersion", CONFIG_VERSION, tempPath);
