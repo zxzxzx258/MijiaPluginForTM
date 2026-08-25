@@ -38,9 +38,71 @@ DankBar 复合插件。它复用 DMS 原生网速采样，并通过局域网 miI
 - 内置 Xiaomi SVG 随 DMS 浅色/深色主题按面板前景色单色显示。
 - helper 不回显 token，并拒绝读取组或其他用户可读的配置文件。
 
+## 架构与职责
+
+DMS 使用 QML 实现界面和插件生命周期；Rust 只承担本地 miIO 协议 worker，并不
+运行第二套桌面界面。这样做是因为 miIO 需要原始 UDP `54321` 通信、hello 握手、
+AES-128-CBC/MD5 加密和多设备并发，而 DMS/Quickshell 的 QML 公共接口并不提供
+一套稳定的原始 UDP 加密客户端。
+
+| 模块 | 文件 | 负责内容 |
+| --- | --- | --- |
+| DankBar 组件 | `MijiaNetworkPowerWidget.qml` | 网速格式化、单色 LOGO、状态栏逐设备显示、弹层汇总与手动刷新 |
+| DMS daemon | `MijiaNetworkPowerDaemon.qml` | 定时/手动启动 helper、解析脱敏 JSON、发布全局读数、提供状态 IPC |
+| 插件设置页 | `MijiaNetworkPowerSettings.qml` | 网速、总功率、逐设备显示选择和刷新间隔设置 |
+| 设备编辑器 | `MijiaDeviceEditor.qml` | 原子保存配置、掩码 token 输入、设备增删改和每台设备的状态栏选择 |
+| 折叠组件 | `MijiaCollapsibleSection.qml` | 整行点击、阻止 Flickable 抢走点击、展开动画 |
+| 协议 helper | `mijia-power-helper` | 配置权限检查、miIO UDP/加密通信、并发读取、脱敏结果输出 |
+| 用户配置 | `mijia-network-power.json` | 每台设备的 IP、token、型号、属性编号和 `show_in_bar` 状态 |
+
+### 数据流与刷新流程
+
+```text
+DMS 设置页 / 弹层编辑器
+        |  原子写入，收紧为 0600
+        v
+~/.config/DankMaterialShell/mijia-network-power.json
+        |
+        v
+QML daemon --config <配置路径> --> mijia-power-helper
+        |                              |
+        |                              +--> 对每台已配置设备并发执行 miIO UDP 读取
+        |                              +--> 只输出 id/name/show_in_bar/watts/error
+        v
+pluginService.setGlobalVar("readings")
+        |
+        v
+DankBar QML：网速 + 被勾选设备功率 + 弹层详情
+```
+
+1. 插件加载时，DankBar 组件向 `DgopService` 请求网速采样；daemon 先发布空读数，
+   再启动 helper。
+2. helper 检查配置权限是否为 `0600` 或更严格，读取设备配置，并对每台设备并发
+   发送 miIO 请求。单台失败会带自己的错误返回，其他设备继续更新。
+3. daemon 解析 helper 的 JSON，将其写入 DMS 的 `readings` 全局变量；组件订阅该
+   变量，不直接读取 token 配置文件。
+4. 设置页或弹层保存后会发送 `refreshRequest` 全局变量，daemon 立即刷新；状态
+   IPC `dms ipc call mijiaNetworkPower status` 只返回设备数量、可读数量、错误和时间。
+5. 定时器按“功率刷新间隔”再次执行。刷新期间已有读数保留，避免界面闪空。
+
+`show_in_bar` 是普通显示偏好，不是凭据。它与功率读数一起返回给 QML，用于决定
+哪台设备进入状态栏；IP 和 token 永远不会从 helper 返回。
+
+### 安全与网络边界
+
+- helper 只连接配置中出现的局域网 IP，不扫描局域网、不登录米家云、不包含任何
+  硬编码的设备 IP 或 token。
+- 同一个预编译 helper 对所有用户都是通用程序；每位用户只会读取自己本机的配置，
+  并连接自己配置的设备。
+- token 仅存在受限用户配置文件中。helper 标准输出、DMS IPC、README 和 CI artifact
+  都不包含 token。
+- 任何预编译程序都需要信任发布来源。CI 产物附带 SHA-256，源码、工作流和构建命令
+  都公开，仍建议从本仓库 Actions 下载或自行 fork 后构建。
+
 ## 安装与更新
 
-需要 Rust 工具链、DMS 1.5.0 或更高版本，以及本机到米家设备的局域网连通性。
+需要 DMS 1.5.0 或更高版本，以及本机到米家设备的局域网连通性。本地从源码构建
+helper 时需要 Rust；使用下方 GitHub Actions 产物时不需要在本机安装 Rust。
 
 ```fish
 git clone --branch DMS https://github.com/zxzxzx258/MijiaPluginForTM.git MijiaPower-MultiDevice-DMS
@@ -57,6 +119,38 @@ dms restart
 在 DMS 设置的“插件”页启用“米家功率与网速”，再在 Dank 状态栏的部件列表中
 加入 `mijiaNetworkPower`。若它用于替换内置网速项，可从同一栏移除
 `network_speed_monitor`。更新后运行 `dms restart` 即可，不需要注销桌面。
+
+## 不安装 Rust：使用 GitHub Actions 编译 helper
+
+`DMS` 分支包含 [Build DMS helper workflow](https://github.com/zxzxzx258/MijiaPluginForTM/actions/workflows/build-dms-helper.yml)。
+每次修改 helper 源码时会构建两个 Linux x86_64 目标，并将二进制和 `SHA256SUMS`
+作为 workflow artifact 上传：
+
+| artifact | 适用范围 |
+| --- | --- |
+| `mijia-power-helper-x86_64-unknown-linux-musl` | 优先选择；静态 musl 版本通常兼容更多 x86_64 Linux 发行版 |
+| `mijia-power-helper-x86_64-unknown-linux-gnu` | 针对使用 glibc 的常规 Linux 环境 |
+
+使用步骤：
+
+1. 在 GitHub 的 Actions 页面打开最新成功的 `Build DMS helper` 运行记录，下载与本机
+   匹配的 artifact；没有权限运行上游工作流时，fork 仓库后在自己的 Actions 页面点击
+   `Run workflow`。
+2. 解压 artifact，在其目录验证校验和：
+
+   ```fish
+   sha256sum -c SHA256SUMS
+   ```
+
+3. 仍需 clone 本分支以取得 QML 和安装脚本，但用预编译 helper 跳过 Cargo：
+
+   ```fish
+   fish install.fish --helper /path/to/mijia-power-helper
+   dms restart
+   ```
+
+该工作流目前发布的是 x86_64 Linux helper。ARM、RISC-V、非 Linux，或目标系统无法
+运行这两个产物时，需要在自己的 fork 中扩展 CI target，或在相应平台本地构建。
 
 ## 在 DMS 中配置
 

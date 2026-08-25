@@ -1,0 +1,63 @@
+name: Build DMS helper
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [DMS]
+    paths:
+      - Cargo.lock
+      - Cargo.toml
+      - src/**
+      - .github/workflows/build-dms-helper.yml
+  pull_request:
+    branches: [DMS]
+    paths:
+      - Cargo.lock
+      - Cargo.toml
+      - src/**
+      - .github/workflows/build-dms-helper.yml
+
+permissions:
+  contents: read
+
+jobs:
+  build-helper:
+    name: ${{ matrix.target }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - x86_64-unknown-linux-gnu
+          - x86_64-unknown-linux-musl
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install musl linker
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        run: sudo apt-get update && sudo apt-get install --yes musl-tools
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Test
+        run: cargo test --locked
+
+      - name: Build helper
+        run: cargo build --locked --release --target ${{ matrix.target }} --bin mijia-power-helper
+
+      - name: Package artifact
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          mkdir -p "artifact/${TARGET}"
+          cp "target/${TARGET}/release/mijia-power-helper" "artifact/${TARGET}/mijia-power-helper"
+          sha256sum "artifact/${TARGET}/mijia-power-helper" > "artifact/${TARGET}/SHA256SUMS"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mijia-power-helper-${{ matrix.target }}
+          path: artifact/${{ matrix.target }}/
+          if-no-files-found: error
