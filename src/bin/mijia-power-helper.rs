@@ -10,6 +10,7 @@ use tokio::task::JoinSet;
 struct DeviceReading {
     id: String,
     name: String,
+    show_in_bar: bool,
     watts: Option<f64>,
     error: Option<String>,
 }
@@ -77,6 +78,7 @@ fn check_config_permissions(_path: &std::path::Path) -> Result<(), String> {
 async fn probe_device(device: MiJiaConfig) -> DeviceReading {
     let id = device.stable_id();
     let name = device.name.clone();
+    let show_in_bar = device.show_in_bar;
     match miio::read_power(
         device.ip,
         &device.token,
@@ -89,12 +91,14 @@ async fn probe_device(device: MiJiaConfig) -> DeviceReading {
         Ok(reading) => DeviceReading {
             id,
             name,
+            show_in_bar,
             watts: Some(reading.watts),
             error: None,
         },
         Err(err) => DeviceReading {
             id,
             name,
+            show_in_bar,
             watts: None,
             error: Some(err.to_string()),
         },
@@ -219,6 +223,7 @@ fn import_text(input: PathBuf, output: PathBuf) -> ImportOutput {
             model: "local.mijia.device".to_string(),
             power_siid: 11,
             power_piid: 2,
+            show_in_bar: true,
         })
         .collect::<Vec<_>>();
     let imported_devices = mijia.len();
@@ -294,6 +299,7 @@ async fn main() {
             Err(error) => devices.push(DeviceReading {
                 id: "unknown".to_string(),
                 name: "米家设备".to_string(),
+                show_in_bar: false,
                 watts: None,
                 error: Some(format!("probe task failed: {error}")),
             }),

@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Layouts
 import QtCore
 import Quickshell
 import Quickshell.Io
@@ -10,7 +9,9 @@ Item {
     id: root
 
     property var requestPowerRefresh: null
-    readonly property string configPath: StandardPaths.writableLocation(StandardPaths.ConfigLocation) + "/DankMaterialShell/mijia-network-power.json"
+    property alias expanded: deviceSection.expanded
+    property bool deviceSelectionEnabled: true
+    readonly property string configPath: Paths.strip(StandardPaths.writableLocation(StandardPaths.ConfigLocation)) + "/DankMaterialShell/mijia-network-power.json"
 
     property var configDocument: ({})
     property var devices: []
@@ -26,6 +27,7 @@ Item {
     property string editorError: ""
 
     implicitHeight: deviceSection.implicitHeight
+    height: implicitHeight
 
     function clone(value) {
         return JSON.parse(JSON.stringify(value));
@@ -111,7 +113,8 @@ Item {
             token: token,
             model: model,
             power_siid: siid,
-            power_piid: piid
+            power_piid: piid,
+            show_in_bar: editingIndex >= 0 ? deviceShownInBar(updated[editingIndex]) : true
         };
         if (editingIndex >= 0)
             updated[editingIndex] = device;
@@ -125,6 +128,19 @@ Item {
     function removeDevice(index) {
         const updated = devices.slice();
         updated.splice(index, 1);
+        devices = updated;
+        saveConfig();
+    }
+
+    function deviceShownInBar(device) {
+        return !device || device.show_in_bar !== false;
+    }
+
+    function setDeviceShownInBar(index, checked) {
+        if (!deviceSelectionEnabled || index < 0 || index >= devices.length)
+            return;
+        const updated = clone(devices);
+        updated[index].show_in_bar = checked;
         devices = updated;
         saveConfig();
     }
@@ -171,21 +187,19 @@ Item {
         }
     }
 
-    DankCollapsibleSection {
+    MijiaCollapsibleSection {
         id: deviceSection
         width: parent.width
         title: "米家设备（" + root.devices.length + "）"
         description: root.status
         expanded: false
-        showBackground: true
-
         Item {
-            Layout.fillWidth: true
-            Layout.preferredHeight: addButton.height
+            width: parent.width
+            height: addButton.height
 
             DankButton {
                 id: addButton
-                anchors.right: parent.right
+                anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
                 text: "添加设备"
                 iconName: "add"
@@ -201,7 +215,7 @@ Item {
             delegate: StyledRect {
                 required property var modelData
                 required property int index
-                Layout.fillWidth: true
+                width: parent.width
                 implicitHeight: deviceDetails.implicitHeight + Theme.spacingM * 2
                 radius: Theme.cornerRadius
                 color: Theme.withAlpha(Theme.surfaceContainerHigh, Theme.popupTransparency)
@@ -220,7 +234,7 @@ Item {
                         spacing: Theme.spacingS
 
                         Column {
-                            width: parent.width - editAction.width - deleteAction.width - parent.spacing * 2
+                            width: parent.width - barToggle.width - editAction.width - deleteAction.width - parent.spacing * 3
                             spacing: Theme.spacingXXS
 
                             StyledText {
@@ -238,6 +252,15 @@ Item {
                                 font.pixelSize: Theme.fontSizeSmall
                                 elide: Text.ElideRight
                             }
+                        }
+
+                        DankToggle {
+                            id: barToggle
+
+                            enabled: root.deviceSelectionEnabled
+                            checked: root.deviceShownInBar(modelData)
+                            anchors.verticalCenter: parent.verticalCenter
+                            onToggled: checked => root.setDeviceShownInBar(index, checked)
                         }
 
                         DankActionButton {
@@ -260,7 +283,7 @@ Item {
         }
 
         StyledRect {
-            Layout.fillWidth: true
+            width: parent.width
             implicitHeight: editorContent.implicitHeight + Theme.spacingM * 2
             radius: Theme.cornerRadius
             color: Theme.withAlpha(Theme.surfaceContainerHighest, Theme.popupTransparency)

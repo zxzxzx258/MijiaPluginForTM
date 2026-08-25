@@ -1,13 +1,14 @@
 import QtQuick
 import QtCore
+import Quickshell
 import Quickshell.Io
+import qs.Common
 import qs.Modules.Plugins
-import qs.Widgets
 
 PluginComponent {
     id: root
 
-    readonly property string configPath: StandardPaths.writableLocation(StandardPaths.ConfigLocation) + "/DankMaterialShell/mijia-network-power.json"
+    readonly property string configPath: Paths.strip(StandardPaths.writableLocation(StandardPaths.ConfigLocation)) + "/DankMaterialShell/mijia-network-power.json"
     readonly property string helperPath: {
         const pluginPath = pluginService?.getPluginPath(pluginId) || "";
         return pluginPath ? pluginPath + "/mijia-power-helper" : "mijia-power-helper";
@@ -15,12 +16,6 @@ PluginComponent {
     readonly property int refreshSeconds: Math.max(5, Number(pluginData.powerRefreshSeconds || 15));
 
     property string latestStdout: ""
-
-    PluginGlobalVar {
-        id: powerReadings
-        varName: "readings"
-        defaultValue: root.emptyReadings()
-    }
 
     function emptyReadings() {
         return {
@@ -32,7 +27,8 @@ PluginComponent {
     }
 
     function publish(value) {
-        powerReadings.set(value);
+        if (pluginService && pluginId)
+            pluginService.setGlobalVar(pluginId, "readings", value);
     }
 
     function probeNow() {
@@ -102,6 +98,26 @@ PluginComponent {
         function onGlobalVarChanged(changedPluginId, variableName) {
             if (changedPluginId === root.pluginId && variableName === "refreshRequest")
                 root.probeNow();
+        }
+    }
+
+    IpcHandler {
+        target: "mijiaNetworkPower"
+
+        function status(): string {
+            const data = root.pluginService?.getGlobalVar(root.pluginId, "readings", root.emptyReadings()) || root.emptyReadings();
+            const devices = Array.isArray(data.devices) ? data.devices : [];
+            return JSON.stringify({
+                configuredDevices: Number(data.configuredDevices || 0),
+                readableDevices: devices.filter(device => device.watts !== null && device.watts !== undefined).length,
+                error: data.error || "",
+                updatedAt: Number(data.updatedAt || 0)
+            });
+        }
+
+        function refresh(): string {
+            root.probeNow();
+            return "refresh requested";
         }
     }
 

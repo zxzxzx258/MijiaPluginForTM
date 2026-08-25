@@ -31,6 +31,7 @@ and install -Dm644 dms-plugin/MijiaNetworkPowerDaemon.qml "$plugin_dir/MijiaNetw
 and install -Dm644 dms-plugin/MijiaNetworkPowerWidget.qml "$plugin_dir/MijiaNetworkPowerWidget.qml"
 and install -Dm644 dms-plugin/MijiaNetworkPowerSettings.qml "$plugin_dir/MijiaNetworkPowerSettings.qml"
 and install -Dm644 dms-plugin/MijiaDeviceEditor.qml "$plugin_dir/MijiaDeviceEditor.qml"
+and install -Dm644 dms-plugin/MijiaCollapsibleSection.qml "$plugin_dir/MijiaCollapsibleSection.qml"
 and install -Dm644 dms-plugin/assets/xiaomi.svg "$plugin_dir/assets/xiaomi.svg"
 and install -Dm755 target/release/mijia-power-helper "$plugin_dir/mijia-power-helper"
 or exit 1

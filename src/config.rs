@@ -28,6 +28,8 @@ pub struct MiJiaConfig {
     pub power_siid: u32,
     #[serde(default = "default_power_piid")]
     pub power_piid: u32,
+    #[serde(default = "default_show_in_bar")]
+    pub show_in_bar: bool,
 }
 
 fn default_model() -> String {
@@ -41,6 +43,9 @@ fn default_power_siid() -> u32 {
 }
 fn default_power_piid() -> u32 {
     2
+}
+fn default_show_in_bar() -> bool {
+    true
 }
 
 impl Default for AppConfig {
@@ -146,5 +151,15 @@ mod tests {
                 .unwrap();
         assert_eq!(config.mijia.len(), 1);
         assert_eq!(config.mijia[0].stable_id(), "192.168.1.2");
+        assert!(config.mijia[0].show_in_bar);
+    }
+
+    #[test]
+    fn preserves_explicit_bar_visibility() {
+        let config: AppConfig = serde_json::from_str(
+            r#"{"mijia":{"ip":"192.168.1.2","token":"00","show_in_bar":false}}"#,
+        )
+        .unwrap();
+        assert!(!config.mijia[0].show_in_bar);
     }
 }

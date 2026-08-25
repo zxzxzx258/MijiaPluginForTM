@@ -1,6 +1,6 @@
 [package]
 name = "mijia-network-power-dms"
-version = "0.2.1"
+version = "0.2.3"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 description = "DMS panel plugin helper for local MiJia power metrics"
