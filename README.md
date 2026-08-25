@@ -4,7 +4,7 @@
 DankBar 复合插件。它复用 DMS 原生网速采样，并通过局域网 miIO 并行读取多台
 米家设备的实时功率。
 
-- 当前版本：`0.2.3`
+- 当前版本：`0.2.4`
 - 作者与维护者：`LinusLIU`
 - 运行平台：Linux、DMS 1.5.0 及以上
 
@@ -18,7 +18,7 @@ DankBar 复合插件。它复用 DMS 原生网速采样，并通过局域网 miI
 | [`main`](https://github.com/zxzxzx258/MijiaPluginForTM/tree/main) | v1.0.0 基线 | Windows / TrafficMonitor | 上游单设备版本，包含最初的 IP/token 获取教程 |
 | [`feature/multi-device-power`](https://github.com/zxzxzx258/MijiaPluginForTM/tree/feature/multi-device-power) | 多设备开发线 | Windows / TrafficMonitor | 将每台设备注册为独立显示项，并增加迁移和独立配置 |
 | [`cosmic`](https://github.com/zxzxzx258/MijiaPluginForTM/tree/cosmic) | v0.1.0 | Linux / COSMIC | 原生 COSMIC panel applet，加入网速、路由接口选择和多设备功率 |
-| [`DMS`](https://github.com/zxzxzx258/MijiaPluginForTM/tree/DMS) | v0.2.3 | Linux / DMS | DMS daemon + DankBar 组件 + 原生设置页，是当前功能最完整的 Linux 分支 |
+| [`DMS`](https://github.com/zxzxzx258/MijiaPluginForTM/tree/DMS) | v0.2.4 | Linux / DMS | DMS daemon + DankBar 组件 + 原生设置页，是当前功能最完整的 Linux 分支 |
 
 三个正式平台分支的 README 会互相链接。它们共享 miIO 协议思路和默认功率属性
 `SIID=11`、`PIID=2`，但不共享二进制产物，也不会自动互相迁移配置。
@@ -261,6 +261,7 @@ dms ipc call mijiaNetworkPower status
 
 ## 版本迭代
 
+- `0.2.4`：修复 Xiaomi SVG 在 DMS 暗色主题下未反白的问题；横向和纵向面板均按主题切换白色或深灰的原生 SVG。
 - `0.2.1`：建立 DMS daemon、DankBar 网速/功率组件、设备编辑和主题单色 LOGO。
 - `0.2.2`：修复配置 URL 路径导致的功率空白；网速改为整数自动单位和动态宽度；
   设备清单改为紧凑折叠布局。

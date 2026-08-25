@@ -17,9 +17,10 @@ PluginComponent {
     readonly property var barDevices: showDevicePowerInBar ? devices.filter(device => device.show_in_bar !== false) : []
     readonly property var successfulDevices: devices.filter(device => device.watts !== null && device.watts !== undefined)
     readonly property real totalWatts: successfulDevices.reduce((sum, device) => sum + Number(device.watts), 0)
+    readonly property string logoAsset: Theme.isLightMode ? "xiaomi-light.svg" : "xiaomi-dark.svg"
     readonly property string logoPath: {
         const pluginPath = pluginService?.getPluginPath(pluginId) || "";
-        return pluginPath ? pluginPath + "/assets/xiaomi.svg" : "";
+        return pluginPath ? pluginPath + "/assets/" + root.logoAsset : "";
     }
 
     PluginGlobalVar {
@@ -110,7 +111,6 @@ PluginComponent {
                 height: root.iconSize
                 source: root.logoPath
                 size: root.iconSize
-                colorOverride: Theme.widgetIconColor
                 anchors.verticalCenter: parent.verticalCenter
                 visible: root.showNetwork && root.logoPath !== ""
             }
@@ -227,7 +227,6 @@ PluginComponent {
                 height: root.iconSize
                 source: root.logoPath
                 size: root.iconSize
-                colorOverride: Theme.widgetIconColor
                 anchors.horizontalCenter: parent.horizontalCenter
                 visible: root.showNetwork && root.logoPath !== ""
             }
