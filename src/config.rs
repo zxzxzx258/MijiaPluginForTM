@@ -10,10 +10,6 @@ use std::{
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct AppConfig {
-    pub interface: Option<String>,
-    pub refresh_seconds: u64,
-    pub show_network: bool,
-    pub show_mijia: bool,
     #[serde(deserialize_with = "deserialize_mijia_devices")]
     pub mijia: Vec<MiJiaConfig>,
 }
@@ -49,13 +45,7 @@ fn default_power_piid() -> u32 {
 
 impl Default for AppConfig {
     fn default() -> Self {
-        Self {
-            interface: None,
-            refresh_seconds: 2,
-            show_network: true,
-            show_mijia: true,
-            mijia: Vec::new(),
-        }
+        Self { mijia: Vec::new() }
     }
 }
 
@@ -92,29 +82,28 @@ pub fn path() -> PathBuf {
         .map(PathBuf::from)
         .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".config")))
         .unwrap_or_else(|| PathBuf::from("."))
-        .join("cosmic-applet-monitor/config.json")
+        .join("DankMaterialShell/mijia-network-power.json")
 }
 
 pub fn load() -> (AppConfig, Option<String>) {
-    let path = path();
-    match fs::read_to_string(path) {
-        Ok(contents) => match serde_json::from_str(&contents) {
-            Ok(config) => (config, None),
-            Err(err) => (AppConfig::default(), Some(format!("invalid config: {err}"))),
-        },
+    match load_from(&path()) {
+        Ok(config) => (config, None),
         Err(err) if err.kind() == io::ErrorKind::NotFound => (AppConfig::default(), None),
-        Err(err) => (
-            AppConfig::default(),
-            Some(format!("cannot read config: {err}")),
-        ),
+        Err(err) => (AppConfig::default(), Some(err.to_string())),
     }
+}
+
+pub fn load_from(path: &Path) -> Result<AppConfig, io::Error> {
+    let contents = fs::read_to_string(path)?;
+    serde_json::from_str(&contents)
+        .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, format!("invalid config: {err}")))
 }
 
 pub fn save(config: &AppConfig) -> Result<(), String> {
     save_to(&path(), config).map_err(|err| format!("cannot save config: {err}"))
 }
 
-fn save_to(path: &Path, config: &AppConfig) -> Result<(), Box<dyn std::error::Error>> {
+pub fn save_to(path: &Path, config: &AppConfig) -> Result<(), Box<dyn std::error::Error>> {
     let parent = path
         .parent()
         .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "config path has no parent"))?;
@@ -148,7 +137,6 @@ mod tests {
     fn defaults_are_safe_without_credentials() {
         let config = AppConfig::default();
         assert!(config.mijia.is_empty());
-        assert_eq!(config.refresh_seconds, 2);
     }
 
     #[test]

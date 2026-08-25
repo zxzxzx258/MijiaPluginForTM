@@ -1,26 +1,3 @@
 {
-  "interface": null,
-  "refresh_seconds": 2,
-  "show_network": true,
-  "show_mijia": true,
-  "mijia": [
-    {
-      "id": "stove-plug",
-      "ip": "192.168.1.100",
-      "token": "00000000000000000000000000000000",
-      "name": "电炉端插座",
-      "model": "cuco.plug.v3",
-      "power_siid": 11,
-      "power_piid": 2
-    },
-    {
-      "id": "computer-plug",
-      "ip": "192.168.1.101",
-      "token": "00000000000000000000000000000000",
-      "name": "电脑端插座",
-      "model": "cuco.plug.v3",
-      "power_siid": 11,
-      "power_piid": 2
-    }
-  ]
+  "mijia": []
 }

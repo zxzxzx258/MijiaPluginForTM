@@ -1,0 +1,18 @@
+{
+  "id": "mijiaNetworkPower",
+  "name": "米家功率与网速",
+  "description": "替换 DMS 网速监控，同时显示局域网米家设备实时功率",
+  "version": "0.2.1",
+  "author": "zxzxzx258",
+  "type": "composite",
+  "capabilities": ["daemon", "dankbar-widget", "monitoring"],
+  "icon": "electric_bolt",
+  "components": {
+    "daemon": "./MijiaNetworkPowerDaemon.qml",
+    "widget": "./MijiaNetworkPowerWidget.qml"
+  },
+  "settings": "./MijiaNetworkPowerSettings.qml",
+  "requires_dms": ">=1.5.0",
+  "dependencies": ["mijia-power-helper"],
+  "permissions": ["settings_read", "settings_write", "process", "network"]
+}

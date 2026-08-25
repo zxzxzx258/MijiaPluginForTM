@@ -1,47 +1,77 @@
-# COSMIC Monitor
+# 米家功率与网速 DMS 插件
 
-Rust 面板小程序基座，用于在 COSMIC panel 中显示实时上下行网速，并可通过局域网 miIO 读取米家设备功率。它参考了 TrafficMonitor 的“可扩展指标 + 面板显示 + 详情弹窗”形态，但不加载 Windows DLL，也不复制目标仓库中与 Windows 宿主绑定的代码。
+面向 [DankMaterialShell](https://github.com/AvengeMedia/DankMaterialShell) 的
+DankBar 插件。它以 DMS 原生的网速采样替换 `network_speed_monitor`，并在同一
+组件显示局域网米家设备的实时功率、总功率和每台设备状态。
 
-## 当前实现
+## 功能
 
-- 由 `X-CosmicApplet=true` 的 XDG desktop 条目注册为 COSMIC applet。
-- 读取 `/proc/net/dev`，以采样间隔计算接口接收/发送速率；自动模式优先选择默认路由对应的物理网卡，并排除 TUN/bridge 等虚拟接口。
-- 米家读取走 UDP `54321`、hello 握手、AES-128-CBC 和 `get_properties`；默认属性为 `siid=11/piid=2`，但配置可覆盖。
-- 面板单行显示下载、上传和每台设备的名称与功率，垂直高度与其他 COSMIC panel 图标对齐。
-- 每台米家设备独立采样和显示错误；单台设备超时不会覆盖其他设备的读数。
-- 没有米家配置时仍可独立使用网络监控，不会扫描局域网。
-- 点击面板后可在弹窗中选择“自动”或固定到当前激活的物理网卡，选择会立即持久化；有线网络成为默认路由后，自动模式会随之切换。
+- 直接复用 `DgopService.networkRxRate` 与 `networkTxRate`，网速口径和 DMS
+  内置组件一致。
+- 一个 DMS daemon 并行读取多台设备的 miIO 功率；多个面板实例不会重复请求。
+- 点击组件打开详情：查看设备状态、手动刷新、新增、编辑、删除设备，并配置
+  型号、功率 `SIID`/`PIID`。
+- 面板默认只显示总功率，设备功率和设备管理按设备数量折叠，避免大量设备拉长
+  面板；需要时可在设置中开启面板内逐台功率。
+- 内置小米 SVG 会按 DMS 当前浅色或深色主题的面板前景色单色显示。
+- token 只保存在
+  `~/.config/DankMaterialShell/mijia-network-power.json`，helper 拒绝使用
+  组或其他用户可读的配置文件。
+- 横向和纵向面板均显示总功率；横向面板的逐台功率显示可在 DMS 插件设置中
+  手动开启。
 
-## 构建与用户级安装
+## 安装
 
-需要 Rust 1.85+、Wayland/COSMIC 运行时和可访问 crates.io/Git 仓库的网络：
+需要 DMS 1.5.0 或更高版本、Rust 工具链，以及本地网络可访问米家设备。
+
+```fish
+git clone --branch DMS https://github.com/zxzxzx258/MijiaPluginForTM.git MijiaPower-MultiDevice-DMS
+cd MijiaPower-MultiDevice-DMS
+fish install.fish
+```
+
+安装脚本只写入当前用户目录：
+
+- `~/.config/DankMaterialShell/plugins/MijiaNetworkPower/`
+- `~/.config/DankMaterialShell/mijia-network-power.json`（权限 `0600`）
+
+然后在 DMS 设置的“插件”页启用“米家功率与网速”，在面板项目中添加
+`mijiaNetworkPower`。要替换内置网速项，从同一面板移除
+`network_speed_monitor`。
+
+## 添加设备
+
+点击面板上的“米家功率与网速”组件，在展开面板中选择“添加设备”。每个设备
+需要名称、局域网 IPv4 地址、32 位十六进制 miIO token，以及实际功率属性的
+`SIID`/`PIID`。token 输入框默认掩码显示，保存后会以原子写入方式更新受限配置。
+
+新安装会创建没有设备的配置，不需要手动编辑 JSON。`config.example.json` 仅供
+自动化或迁移工具使用，不能提交真实 token。
+
+## 从文本迁移
+
+若已有仅包含 IP/token 的本地文本，可用 helper 导入。它只接受相邻的 IP 与 token
+记录，候选数量不一致或无法唯一配对时会拒绝写入，避免误将网关地址导入。
+
+```fish
+target/release/mijia-power-helper --import-text /path/to/devices.txt --output ~/.config/DankMaterialShell/mijia-network-power.json
+```
+
+导入完成后，仍可在组件详情中修改设备名称、型号及 `SIID`/`PIID`。
+
+## 构建与验证
 
 ```fish
 cargo test
 cargo build --release
-install -Dm755 target/release/cosmic-applet-monitor ~/.local/bin/cosmic-applet-monitor
-install -Dm644 data/io.github.cosmic.Monitor.desktop ~/.local/share/applications/io.github.cosmic.Monitor.desktop
-install -Dm644 data/icons/hicolor/scalable/apps/io.github.cosmic.Monitor-symbolic.svg ~/.local/share/icons/hicolor/scalable/apps/io.github.cosmic.Monitor-symbolic.svg
+target/release/mijia-power-helper --config ~/.config/DankMaterialShell/mijia-network-power.json
 ```
 
-然后在 COSMIC 设置的面板项目中加入 `COSMIC Monitor`。不同发行版的面板刷新方式不同，重新登录是最可靠的发现方式。
+最后一条命令只输出功率读数或错误状态，不会输出 token。单台设备超时、token
+无效或属性编号不匹配不会覆盖其他设备的读数。
 
-插件使用单色 Xiaomi symbolic 图标；COSMIC 会根据 Dark/Light 主题自动调整图标颜色。图标由仓库所有者提供，用于本非商业项目。
+## 限制
 
-## 配置与令牌边界
-
-配置路径为 `$XDG_CONFIG_HOME/cosmic-applet-monitor/config.json`，未设置时为 `~/.config/cosmic-applet-monitor/config.json`。复制 `config.example.json` 后为 `mijia` 数组中的每台设备填入稳定 `id`、局域网 IP、16 字节十六进制 token 和实际属性编号，并确保文件权限为 `0600`：
-
-`interface` 为 `null` 时使用自动模式；也可以写入 `"wlan0"`、`"enp14s0"` 等接口名固定选择。通常直接在 applet 弹窗中修改即可。
-
-```fish
-mkdir -p ~/.config/cosmic-applet-monitor
-cp config.example.json ~/.config/cosmic-applet-monitor/config.json
-chmod 600 ~/.config/cosmic-applet-monitor/config.json
-```
-
-程序不会自动扫描局域网或回显凭据；不要把真实 token 提交到 Git、终端日志或问题报告。仓库根目录的 `config.json` 和 `config.local.json` 已被忽略，实际运行配置仍应保存在上述用户配置目录中。
-
-## 局限
-
-米家固件可能禁用本地 miIO，且不同型号的功率属性编号不同；没有真实设备配置时只能验证协议编码和错误处理，不能宣称硬件连接成功。米家设备必须与本机处于可达的同一局域网。
+米家固件可能禁用本地 miIO；不同型号的功率属性也可能不是默认的
+`SIID=11`、`PIID=2`。出现单设备失败时，在组件详情中针对该设备调整属性编号或
+确认其 IP/token 与局域网可达性。
