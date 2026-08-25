@@ -1,5 +1,26 @@
 # 米家插座功率 TrafficMonitor 插件
 
+- 当前分支：`main`
+- 版本定位：Windows / TrafficMonitor 单设备 v1.0.0 基线
+- 作者与维护者：`LinusLIU`
+
+## 项目家族与分支
+
+本仓库在最初的 Windows 单设备插件基础上，逐步演进出 Windows 多设备、COSMIC
+和 DMS 三套实现。它们共享局域网 miIO 协议思路，但宿主、二进制和配置文件不同，
+不能混装：
+
+| 分支 | 版本/阶段 | 平台 | 关系与功能 |
+| --- | --- | --- | --- |
+| [`main`](https://github.com/zxzxzx258/MijiaPluginForTM/tree/main) | v1.0.0 基线 | Windows / TrafficMonitor | 最初的单设备功率、历史记录、设置对话框和 IP/token 教程 |
+| [`feature/multi-device-power`](https://github.com/zxzxzx258/MijiaPluginForTM/tree/feature/multi-device-power) | 多设备开发线 | Windows / TrafficMonitor | 从 `main` 扩展为独立多设备显示项、排序、迁移和逐台测试 |
+| [`cosmic`](https://github.com/zxzxzx258/MijiaPluginForTM/tree/cosmic) | v0.1.0 | Linux / COSMIC | 重写为原生 COSMIC panel applet，并加入网速与物理网卡选择 |
+| [`DMS`](https://github.com/zxzxzx258/MijiaPluginForTM/tree/DMS) | v0.2.3 | Linux / DMS | 重写为 DMS daemon + DankBar 组件，支持原生设置页、多设备功率和逐台状态栏选择 |
+
+功能迭代顺序是：`main` 单设备基线 -> `feature/multi-device-power` Windows 多设备 ->
+`cosmic` Linux 原生面板 -> `DMS` 完整的 DMS 集成。Linux 用户应进入对应分支阅读
+安装说明；本分支的 DLL 只适用于 TrafficMonitor。
+
 ## 简介
 
 这是一个 TrafficMonitor 插件，可以在 Windows 任务栏实时显示米家/酷控（cuco）智能插座的功率数值，并可选开启功率历史记录功能。
