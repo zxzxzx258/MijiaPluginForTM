@@ -120,13 +120,13 @@ pub fn save_to(path: &Path, config: &AppConfig) -> Result<(), Box<dyn std::error
         let mut file = fs::OpenOptions::new()
             .write(true)
             .create_new(true)
-            .mode(0o600)
+            .mode(0o644)
             .open(&temporary)?;
         serde_json::to_writer_pretty(&mut file, config)?;
         file.write_all(b"\n")?;
         file.sync_all()?;
         fs::rename(&temporary, path)?;
-        fs::set_permissions(path, fs::Permissions::from_mode(0o600))?;
+        fs::set_permissions(path, fs::Permissions::from_mode(0o644))?;
         Ok(())
     })();
     if result.is_err() {

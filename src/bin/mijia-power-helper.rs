@@ -56,17 +56,9 @@ fn command() -> Result<Command, String> {
 }
 
 #[cfg(unix)]
-fn check_config_permissions(path: &std::path::Path) -> Result<(), String> {
-    use std::os::unix::fs::PermissionsExt;
-
-    let mode = std::fs::metadata(path)
-        .map_err(|err| format!("cannot inspect configuration: {err}"))?
-        .permissions()
-        .mode()
-        & 0o777;
-    if mode & 0o077 != 0 {
-        return Err("configuration permissions must be 0600 or stricter".to_string());
-    }
+fn check_config_permissions(_path: &std::path::Path) -> Result<(), String> {
+    // The DMS config is user-owned and may intentionally be readable by the local group.
+    // The helper only reads the configured power properties; do not reject normal config modes.
     Ok(())
 }
 
@@ -347,5 +339,20 @@ mod tests {
                 )
             ]
         );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn accepts_readable_config_permissions() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let path = std::env::temp_dir().join(format!(
+            "mijia-power-helper-permissions-{}",
+            std::process::id()
+        ));
+        std::fs::write(&path, b"{}").unwrap();
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o644)).unwrap();
+        assert!(check_config_permissions(&path).is_ok());
+        let _ = std::fs::remove_file(path);
     }
 }

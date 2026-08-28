@@ -64,9 +64,9 @@ and install -Dm755 "$helper_source" "$plugin_dir/mijia-power-helper"
 or exit 1
 
 if not test -e "$config_path"
-    install -Dm600 config.example.json "$config_path"
+    install -Dm644 config.example.json "$config_path"
 else
-    chmod 600 "$config_path"
+    chmod 644 "$config_path"
 end
 
 echo "DMS 插件已安装到：$plugin_dir"

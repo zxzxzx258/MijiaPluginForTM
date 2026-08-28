@@ -178,7 +178,7 @@ Item {
 
     Process {
         id: permissionsProcess
-        command: ["chmod", "600", root.configPath]
+        command: ["chmod", "644", root.configPath]
         onExited: exitCode => {
             if (exitCode === 0 && root.requestPowerRefresh)
                 root.requestPowerRefresh();
